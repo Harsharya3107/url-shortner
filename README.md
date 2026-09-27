@@ -27,4 +27,8 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 
 ## Decisions worth remembering
 
-(Filled in as each milestone lands.)
+### Base62 (`codegen/Base62`)
+- **62, not 64:** `+` and `/` break URLs; base64url's `-`/`_` get trimmed by chat auto-linkers and `-` is reserved for custom aliases.
+- **Fixed width 7, zero-padded:** one shape for every generated code, so custom aliases (8+ chars or containing `-`) can never collide with a future generated code; length doesn't reveal age.
+- **`0-9A-Za-z` = ASCII order:** string order equals numeric order. Handy, but it means sequential ids would hotspot a key-sorted store (Bigtable). The M2 permutation fixes that and guessability together.
+- **Throws instead of growing:** a value that needs 8 chars is a bug, not something to hide.
