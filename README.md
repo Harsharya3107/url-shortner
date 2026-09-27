@@ -47,3 +47,10 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 - **Delete = DISABLED, row kept:** the code is never reused, and takedowns are auditable.
 - **Namespace split enforced by a CHECK:** generated = exactly `[0-9A-Za-z]{7}`, custom = anything else. The app gives nice errors; the DB makes the rule unbreakable.
 - **Timestamps truncated to micros:** Postgres precision, so a DB round trip gives an equal record.
+
+### UrlRepository + JdbcUrlRepository (`repository/`)
+- **Interface of two methods:** `insertIfAbsent` and `findByCode`. M3's cache wraps it as a Decorator; the redirect service never knows which layer answered.
+- **Check-then-insert is a race:** the test forces 16 threads through "SELECT → barrier → INSERT"; all 16 see "free". Only one atomic statement can decide the winner.
+- **`ON CONFLICT (code) DO NOTHING` + row count, not catching `DuplicateKeyException`:** in Postgres a failed statement aborts the whole transaction (25P02), so a catch-and-retry can't continue in it. Both behaviors are proven by tests.
+- **Name the conflict target `(code)`:** a bare `ON CONFLICT DO NOTHING` would swallow future unique indexes and misreport them as code collisions. Other constraint errors still throw, so a bad URL is never retried as a "collision".
+- **Tests hit real Postgres (`urlshortener_test`),** because ON CONFLICT, CHECKs and aborted transactions are what an in-memory fake gets wrong. (Boot 3.3.4's Testcontainers is too old for Docker 29's API.)

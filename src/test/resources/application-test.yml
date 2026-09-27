@@ -1,0 +1,6 @@
+# Integration tests run against a separate database in the same container (see
+# docker/postgres-init). Testcontainers would be the usual choice, but the version managed by
+# Boot 3.3.4 speaks a Docker API older than Docker 29 accepts.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5434/urlshortener_test
