@@ -39,3 +39,11 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 - **Collision odds are linear, not birthday:** P = used / 62⁷, so ≈5% at 183B links → ~1.055 attempts per insert.
 - **SecureRandom, not Random:** a 48-bit LCG can be recovered from a few outputs, letting an attacker predict the next users' codes.
 - **`nextLong(bound)`, not `abs(nextLong()) % N`:** modulo bias, and `abs(Long.MIN_VALUE)` is negative.
+
+### short_urls table + ShortUrl record (`V1__create_short_urls.sql`, `domain/`)
+- **JDBC + record, not JPA:** with an assigned id, `save()` merges (SELECT, then INSERT *or UPDATE*), so a code collision would silently overwrite someone's link. The one operation that matters is `INSERT ... ON CONFLICT DO NOTHING`.
+- **`VARCHAR(32) COLLATE "C"` PK:** room for custom aliases; byte comparison is case-sensitive (RFC 3986 paths), fast, and matches Base62's ASCII order.
+- **No EXPIRED status:** expiry is derived from `expires_at` on read. A stored flag needs a job and is wrong until the job runs.
+- **Delete = DISABLED, row kept:** the code is never reused, and takedowns are auditable.
+- **Namespace split enforced by a CHECK:** generated = exactly `[0-9A-Za-z]{7}`, custom = anything else. The app gives nice errors; the DB makes the rule unbreakable.
+- **Timestamps truncated to micros:** Postgres precision, so a DB round trip gives an equal record.

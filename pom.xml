@@ -31,9 +31,12 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <!-- Plain JDBC, not JPA: with an assigned id, JPA's save() does a merge (SELECT then
+         INSERT or UPDATE), so a code collision would silently overwrite someone's link.
+         We need INSERT ... ON CONFLICT DO NOTHING, which is explicit SQL anyway. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
     </dependency>
 
     <dependency>

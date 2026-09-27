@@ -7,11 +7,6 @@ spring:
     username: urlshortener
     password: urlshortener
 
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate   # Flyway owns the schema; Hibernate only checks it matches the entities
-
   flyway:
     enabled: true
     locations: classpath:db/migration
