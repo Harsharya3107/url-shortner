@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: url-shortener
+
+  datasource:
+    url: jdbc:postgresql://localhost:5434/urlshortener
+    username: urlshortener
+    password: urlshortener
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # Flyway owns the schema; Hibernate only checks it matches the entities
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+server:
+  port: 8082   # 8080 is taken on this machine, 8081 is the notification system
