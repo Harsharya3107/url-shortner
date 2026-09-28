@@ -4,6 +4,7 @@ import com.urlshortener.codegen.RandomCodeGenerator;
 import com.urlshortener.codegen.ShortCodeGenerator;
 import com.urlshortener.repository.UrlRepository;
 import com.urlshortener.service.LongUrlValidator;
+import com.urlshortener.service.RedirectService;
 import com.urlshortener.service.ShortenService;
 import java.time.Clock;
 import java.util.HashSet;
@@ -38,6 +39,12 @@ public class ShortenerConfig {
         Set<String> blocked = new HashSet<>(props.blockedHosts());
         blocked.add(props.baseUrl().getHost()); // never shorten our own short links
         return new LongUrlValidator(blocked);
+    }
+
+    /** From M3, the repository injected here becomes the caching decorator; this class doesn't change. */
+    @Bean
+    RedirectService redirectService(UrlRepository repository, Clock clock) {
+        return new RedirectService(repository, clock);
     }
 
     @Bean

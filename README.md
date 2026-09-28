@@ -62,3 +62,9 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 - **URL validation is security, not tidying:** http/https only (no `javascript:`/`data:`), no user-info (`https://paypal.com@evil.com`), never our own domain or its subdomains, trailing dot normalized (`sho.rt.` = `sho.rt`). Store the URL as given (trimmed): rewriting it could break the user's link.
 - **Not blocked: `localhost`/private IPs.** Redirecting a browser there only affects the clicker. It matters only if *we* fetch URLs (scanning, previews): that fetcher must block them (SSRF).
 - **Service classes have no Spring annotations:** `ShortenerConfig` wires them, so unit tests build them with fakes. `ShortenerProperties` is validated at startup, so a missing base URL fails the boot.
+
+### RedirectService + RedirectResult (`service/`)
+- **Sealed result type (Found / NotFound / Gone), not exceptions:** misses are normal traffic on the hottest path; a `switch` over the sealed type won't compile if a case is missed.
+- **410 vs 404:** 410 = existed but expired/disabled, so crawlers drop it and support can tell "expired" from "mistyped". Disabled and expired look identical to the client, so takedowns aren't revealed.
+- **Reject impossible codes before the lookup:** 1–32 chars of `[0-9A-Za-z-]`, checked in memory, keeps scanner junk off the DB (and, from M3, the cache).
+- **Stays unchanged later:** M3 swaps the injected repository for the caching decorator; M5 records clicks in the controller *after* the response, so analytics can never slow or fail a redirect.
