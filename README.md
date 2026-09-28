@@ -54,3 +54,11 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 - **`ON CONFLICT (code) DO NOTHING` + row count, not catching `DuplicateKeyException`:** in Postgres a failed statement aborts the whole transaction (25P02), so a catch-and-retry can't continue in it. Both behaviors are proven by tests.
 - **Name the conflict target `(code)`:** a bare `ON CONFLICT DO NOTHING` would swallow future unique indexes and misreport them as code collisions. Other constraint errors still throw, so a bad URL is never retried as a "collision".
 - **Tests hit real Postgres (`urlshortener_test`),** because ON CONFLICT, CHECKs and aborted transactions are what an in-memory fake gets wrong. (Boot 3.3.4's Testcontainers is too old for Docker 29's API.)
+
+### ShortenService + LongUrlValidator (`service/`, `config/`)
+- **Retry budget from the math:** failures/day = volume × p^k. At year 5 (p = 5.2%, 100M/day): k=5 → ~38 failures/day, k=8 → one every ~200 days. So 8. Exhausting it means a bug → `CodeAllocationException` (5xx, logged), never an infinite loop.
+- **No `@Transactional`:** each attempt is one atomic statement; a transaction would only hold a connection across retries.
+- **Injected `Clock`:** one "now" per request for `createdAt` and the expiry check; tests pin time exactly.
+- **URL validation is security, not tidying:** http/https only (no `javascript:`/`data:`), no user-info (`https://paypal.com@evil.com`), never our own domain or its subdomains, trailing dot normalized (`sho.rt.` = `sho.rt`). Store the URL as given (trimmed): rewriting it could break the user's link.
+- **Not blocked: `localhost`/private IPs.** Redirecting a browser there only affects the clicker. It matters only if *we* fetch URLs (scanning, previews): that fetcher must block them (SSRF).
+- **Service classes have no Spring annotations:** `ShortenerConfig` wires them, so unit tests build them with fakes. `ShortenerProperties` is validated at startup, so a missing base URL fails the boot.

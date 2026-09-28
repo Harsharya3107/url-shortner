@@ -16,3 +16,8 @@ spring:
 
 server:
   port: 8082   # 8080 is taken on this machine, 8081 is the notification system
+
+shortener:
+  base-url: http://localhost:8082   # prefix of returned short URLs; its host is refused as a destination
+  max-insert-attempts: 8            # sized from the collision math in ShortenService
+  blocked-hosts: []
