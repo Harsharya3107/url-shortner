@@ -25,4 +25,10 @@ public record ShortenerProperties(
         @NotNull URI baseUrl,
         @DefaultValue("8") @Min(1) @Max(20) int maxInsertAttempts,
         @DefaultValue List<String> blockedHosts) {
+
+    public ShortenerProperties {
+        // Records are only shallowly immutable: without the copy, whoever holds the original
+        // list could still change the contents after binding.
+        blockedHosts = List.copyOf(blockedHosts);
+    }
 }

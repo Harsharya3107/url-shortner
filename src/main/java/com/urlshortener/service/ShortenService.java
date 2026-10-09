@@ -51,6 +51,9 @@ public class ShortenService {
 
     private static final Logger log = LoggerFactory.getLogger(ShortenService.class);
 
+    /** Matches {@code short_urls.owner_id VARCHAR(64)}. */
+    static final int MAX_OWNER_ID_LENGTH = 64;
+
     private final UrlRepository repository;
     private final ShortCodeGenerator generator;
     private final LongUrlValidator urlValidator;
@@ -80,6 +83,10 @@ public class ShortenService {
      */
     public ShortUrl shorten(String longUrl, String ownerId, Instant expiresAt) {
         String url = urlValidator.validate(longUrl);
+        if (ownerId != null && (ownerId.isBlank() || ownerId.length() > MAX_OWNER_ID_LENGTH)) {
+            // Checked here so an oversized header becomes a 422, not a DB error surfacing as a 500.
+            throw new InvalidLinkRequestException(Reason.INVALID_OWNER, "owner id must be 1-" + MAX_OWNER_ID_LENGTH + " characters");
+        }
         Instant now = clock.instant();
         if (expiresAt != null && !expiresAt.isAfter(now)) {
             throw new InvalidLinkRequestException(Reason.INVALID_EXPIRY, "expires_at must be in the future");

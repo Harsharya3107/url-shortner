@@ -13,7 +13,9 @@ public class InvalidLinkRequestException extends RuntimeException {
         /** Parseable, but points somewhere we refuse to redirect to (our own domain, credentials in the URL). */
         URL_NOT_ALLOWED,
         /** Expiry is not in the future. */
-        INVALID_EXPIRY
+        INVALID_EXPIRY,
+        /** Owner id is blank or longer than the 64-char column. */
+        INVALID_OWNER
     }
 
     private final Reason reason;

@@ -18,7 +18,7 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 
 | # | Build | Proves |
 |---|-------|--------|
-| M1 | `Base62`, `POST /v1/urls`, `GET /{code}` → 302 on Postgres with a UNIQUE key; random generator first | End-to-end flow, validation, conditional insert, 404 vs 410 |
+| M1 ✅ | `Base62`, `POST /v1/urls`, `GET /{code}` → 302 on Postgres with a UNIQUE key; random generator first | End-to-end flow, validation, conditional insert, 404 vs 410 |
 | M2 | `IdBlockAllocator` + `RangeLeasingGenerator` + `FeistelPermutation` | 1M codes from 64 threads with zero duplicates; a killed instance only leaves gaps |
 | M3 | Redis cache-aside, Caffeine L1, negative cache, single-flight on miss | p99 and DB QPS with and without each layer; hot-key test |
 | M4 | Custom aliases, reserved words, expiry, `PATCH`/`DELETE` with invalidation | Alias race gives exactly one 201 and one 409 |
@@ -68,3 +68,13 @@ Build with JDK 21. Homebrew's `mvn` defaults to a newer JDK, which breaks Lombok
 - **410 vs 404:** 410 = existed but expired/disabled, so crawlers drop it and support can tell "expired" from "mistyped". Disabled and expired look identical to the client, so takedowns aren't revealed.
 - **Reject impossible codes before the lookup:** 1–32 chars of `[0-9A-Za-z-]`, checked in memory, keeps scanner junk off the DB (and, from M3, the cache).
 - **Stays unchanged later:** M3 swaps the injected repository for the caching decorator; M5 records clicks in the controller *after* the response, so analytics can never slow or fail a redirect.
+
+### Controllers + error handling (`controller/`, `api/`)
+- **Two controllers:** `UrlController` (`/v1/urls`, small, authenticated) and `RedirectController` (`/{code}`, ~100× the traffic). They'll scale and deploy separately.
+- **`POST` → 201 + `Location` + `short_url` in the body:** clients never build short URLs themselves, so moving domains or adding custom domains doesn't break them.
+- **Redirect headers:** 302 + `Cache-Control: private, max-age=90` (repeat clicks within 90 s skip us; takedowns reach everyone within 90 s; shared proxies don't cache). 404/410 are `no-store`: the code may be created, or the link restored, a moment later.
+- **`/{code}` matches one path segment,** so it never swallows `/v1/urls`. Reserved words (`v1`, `api`, `actuator`) must be banned as custom aliases in M4.
+- **`ResponseEntity`, not `"redirect:"`:** the status and every header stay visible; `"redirect:"` can leak model attributes into the query string.
+- **ProblemDetail (RFC 9457) everywhere:** extend `ResponseEntityExceptionHandler` so Spring's own 400/405/415 share the shape. No catch-all `@ExceptionHandler(Exception.class)`: it would turn clients' 405s into our 500s.
+- **422 vs 400:** 400 = the request couldn't be parsed; 422 = parsed fine, content refused. `CodeAllocationException` → 503 + `Retry-After`, since a retry draws fresh random codes.
+- **Owner id length checked in the service,** so a 65-char header is a 422, not a DB error surfacing as 500.
